@@ -1,5 +1,5 @@
 /// [Color] struct containing an RGBA `[u8; 4]` array. 
-#[derive(Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Color([u8; 4]); 
 
 impl Color {
@@ -17,7 +17,7 @@ impl Color {
     pub const BLUE  : Color = Color([0, 0, 255, 255]); 
 
     /// Constructor. Creates a [Color] based on provided 
-    // `color` `[u8; 4]` RGBA array. 
+    /// `color` `[u8; 4]` RGBA array. 
     pub fn new(color: [u8; 4]) -> Self { 
         Self(color) 
     }
@@ -38,7 +38,7 @@ pub struct Style {
 
 impl Style {
     /// Constructor. Initializes [Style] struct with given `color` and `fill` option. 
-    pub fn new(stroke: Option<Color>, fill: Option<Color>) -> Self { 
+    pub const fn new(fill: Option<Color>, stroke: Option<Color>) -> Self { 
         Self { fill, stroke }
     }
 
@@ -51,6 +51,12 @@ impl Style {
     pub const fn fill(color: Color) -> Self { 
         Self { fill: Some(color), stroke: None  }
     }
+
+    /// Comparison. Returns `true` if there exists a `Some(color)` in either stroke or fill.
+    /// otherwise returns `false`. 
+    pub fn fill_or_stroke_exists(&self) -> bool { 
+        self.fill.is_some() || self.stroke.is_some()
+    }       
 }
 
 

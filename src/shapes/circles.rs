@@ -23,68 +23,58 @@ pub fn circle(
     circle_px(stage, origin_px, radius_px, style);
 }
 
-
-#[inline(always)]
-fn fill_row(stage: &mut Stage, xc: isize, yc: isize, x: isize, y: isize, rgba: [u8; 4]) { 
-    stage.fill_span(yc + y, xc - x, xc + x, rgba);
-    stage.fill_span(yc - y, xc - x, xc + x, rgba); 
-    stage.fill_span(yc + x, xc - y, xc + y, rgba); 
-    stage.fill_span(yc - x, xc - y, xc + y, rgba); 
-}
-
-/// Circles are symmetric about `xc` and `yc`. After calculating the `(x, y)` 
-/// pixel to color, we also know 7 other pixel coordinates to color. 
-#[inline(always)] 
-fn draw_octants(
-    stage: &mut Stage, 
-    xc: isize, 
-    yc: isize, 
-    x: isize, 
-    y: isize, 
-    rgba: [u8; 4], 
-    fill: bool, 
-) { 
-    stage.plot(xc + x, yc + y, rgba); 
-    stage.plot(xc - x, yc + y, rgba); 
-    stage.plot(xc + x, yc - y, rgba); 
-    stage.plot(xc - x, yc - y, rgba); 
-    stage.plot(xc + y, yc + x, rgba); 
-    stage.plot(xc - y, yc + x, rgba); 
-    stage.plot(xc + y, yc - x, rgba); 
-    stage.plot(xc - y, yc - x, rgba);   
-
-    if fill { 
-        fill_row(stage, xc, yc, x, y, rgba); 
-    }
-}
-
-/// Draws a circle in pixel-coordinate space with `radius` and `origin`.
+/// Draws a circle in pixel-coordinate space with `radius_px` and `origin_px`.
 pub(crate) fn circle_px(
-    stage: &mut Stage, 
-    origin_px: (isize, isize), 
-    radius_px: usize, 
-    style: Style 
+    stage: &mut Stage,
+    origin_px: (isize, isize),
+    radius_px: usize,
+    style: Style,
 ) {
-    let color = style.color; 
-    let fill = style.fill;
-    let (xc, yc) = origin_px; 
-    let rgba = color.rgba(); 
+    if !style.fill_or_stroke_exists() { 
+        return; 
+    }
+
+    let fill_rgba = style.fill.map(|c| c.rgba()); 
+    let stroke_rgba = style.stroke.map(|c| c.rgba()); 
+
+    let (xc, yc) = origin_px;
     let r = radius_px as isize;
-    let (mut x, mut y) = (0, r);
-    let mut d = 3 - 2 * r; 
 
-    // Bresenham midpoint circle algorithm
-    draw_octants(stage, xc, yc, x, y, rgba, fill); 
-    while x < y { 
-        x += 1; 
+    let mut x = 0;
+    let mut y = r;
+    let mut d = 3 - 2 * r;
 
-        if d > 0 { 
-            y -= 1; 
-            d += 4 * (x - y) + 10; 
-        } else { 
-            d += 4 * x + 6; 
+    loop {
+        // fill 
+        if let Some(rgba) = fill_rgba {
+            stage.fill_span(yc + y, xc - x + 1, xc + x - 1, rgba);
+            stage.fill_span(yc - y, xc - x + 1, xc + x - 1, rgba);
+            stage.fill_span(yc + x, xc - y + 1, xc + y - 1, rgba);
+            stage.fill_span(yc - x, xc - y + 1, xc + y - 1, rgba);
         }
 
-        draw_octants(stage, xc, yc, x, y, rgba, fill);
+        // stroke
+        if let Some(rgba) = stroke_rgba {
+            stage.plot(xc + x, yc + y, rgba);
+            stage.plot(xc - x, yc + y, rgba);
+            stage.plot(xc + x, yc - y, rgba);
+            stage.plot(xc - x, yc - y, rgba);
+            stage.plot(xc + y, yc + x, rgba);
+            stage.plot(xc - y, yc + x, rgba);
+            stage.plot(xc + y, yc - x, rgba);
+            stage.plot(xc - y, yc - x, rgba);
+        }
+
+        if x >= y { break; }
+
+        // Bresenham circle
+        x += 1;
+        if d > 0 {
+            y -= 1;
+            d += 4 * (x - y) + 10;
+        } else {
+            d += 4 * x + 6;
+        }
     }
-} 
+}
+

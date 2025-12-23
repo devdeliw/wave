@@ -1,7 +1,6 @@
 use crate::{Stage, Style}; 
 use crate::shapes::lines::line_px; 
 
-
 /// Draws a rectangle in cartesian coords *centered* about `origin` given `height` and `width`.
 ///
 /// Arguments: 
@@ -17,6 +16,10 @@ pub fn rectangle(
     width: f32,
     style: Style,
 ) {
+    if !style.fill_or_stroke_exists() { 
+        return; 
+    }
+
     if !height.is_finite() || height <= 0.0 || !width.is_finite() || width <= 0.0 {
         return;
     }
@@ -44,16 +47,9 @@ pub fn rectangle(
 
     if t > b { return; } 
 
-    let rgba = style.color.rgba();
-
-    // draw stroke
-    line_px(stage, (l, t0), (r, t0), style.color);
-    line_px(stage, (l, b0), (r, b0), style.color);
-    line_px(stage, (l, t0), (l, b0), style.color);
-    line_px(stage, (r, t0), (r, b0), style.color);
-
     // fill interior
-    if style.fill {
+    if let Some(fill_color) = style.fill {
+        let rgba = fill_color.rgba();
         let x0 = l + 1;
         let x1 = r - 1;
 
@@ -66,6 +62,15 @@ pub fn rectangle(
             }
         }
     }
+
+    // draw stroke 
+    if let Some(stroke_color) = style.stroke { 
+        line_px(stage, (l, t0), (r, t0), stroke_color);
+        line_px(stage, (l, b0), (r, b0), stroke_color);
+        line_px(stage, (l, t0), (l, b0), stroke_color);
+        line_px(stage, (r, t0), (r, b0), stroke_color);
+    }
+
 
 }
 
