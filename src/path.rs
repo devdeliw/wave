@@ -3,7 +3,10 @@
 //! Every primitive polygon object is built using a [Path].
 
 use crate::{Color, Stage, Style};
-use crate::primitives::triangle::draw_triangle; 
+use crate::primitives::{
+    line::draw_line,
+    triangle::draw_triangle, 
+}; 
 
 /// A general Path object.
 ///
@@ -34,9 +37,8 @@ impl Path {
             out.push(stage.world_to_pixel(xy)?);
         }
         Some(out)
-    }
+    } 
 
-    /// Builds the line stroke of `self` with a given `width`. 
     pub(crate) fn make_stroke(
         nodes_px: &[(isize, isize)],
         closed: bool,
@@ -44,15 +46,24 @@ impl Path {
         stage: &mut Stage,
         stroke_color: Color,
     ) {
-        if nodes_px.len() < 2 {
-            return;
-        }
-        if !width.is_finite() || width <= 0.0 {
+        if nodes_px.len() < 2 { return; }
+        if !width.is_finite() || width <= 0.0 { return; }
+
+        // 1px stroke, Bresenham line
+        if width <= 1.0 {
+            let mut i = 0;
+            while i + 1 < nodes_px.len() {
+                draw_line(stage, nodes_px[i], nodes_px[i + 1], stroke_color);
+                i += 1;
+            }
+            if closed {
+                draw_line(stage, nodes_px[nodes_px.len() - 1], nodes_px[0], stroke_color);
+            }
             return;
         }
 
+        // thick stroke 
         let style = Style::make_fill(stroke_color);
-
         let mut i = 0;
         while i + 1 < nodes_px.len() {
             let xy1 = nodes_px[i];

@@ -55,7 +55,7 @@ fn main() {
         Some(Color::WHITE), 
         Some(Color::new([245, 40, 145, 255])), 
     );
-    style.set_stroke_width(1.0); 
+    style.set_stroke_width(5.0); 
 
     style.set_stroke_opacity(Opacity::OPAQUE);
     style.set_fill_opacity(Opacity::OPAQUE);
