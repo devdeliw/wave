@@ -6,7 +6,7 @@ use crate::{Stage, Style};
 /// - stage: &mut [`Stage`] - stage to draw onto. 
 /// - origin: ([f32], [f32]) - coord for origin of circle. 
 /// - radius: [f32] - radius of circle. 
-/// - style: [`Style`] - struct containing style args. 
+/// - style: [`Style`] - struct containing styling args. 
 pub fn circle( 
     stage: &mut Stage, 
     origin: (f32, f32), 
@@ -24,7 +24,7 @@ pub fn circle(
 }
 
 /// Draws a circle in pixel-coordinate space with `radius_px` and `origin_px`.
-fn circle_px(
+pub(crate) fn circle_px(
     stage: &mut Stage,
     origin_px: (isize, isize),
     radius_px: usize,
@@ -106,11 +106,11 @@ fn circle_px(
 
                 } else {
                     stage.fill_span(y_top, xc - x_out, xc - a, c);
-                    stage.fill_span(y_top, xc + a, xc + x_out, c);
+                    stage.fill_span(y_top, xc + a,   xc + x_out, c);
 
                     if y != 0 {
                         stage.fill_span(y_bot, xc - x_out, xc - a, c);
-                        stage.fill_span(y_bot, xc + a, xc + x_out, c);
+                        stage.fill_span(y_bot, xc + a,   xc + x_out, c);
                     }
                 }
             }
@@ -119,5 +119,4 @@ fn circle_px(
         y2 += 2 * (y as i64) + 1;
     }
 }
-
 

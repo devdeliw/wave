@@ -4,11 +4,11 @@ use crate::shapes::lines::line_px;
 /// Draws a rectangle in cartesian coords *centered* about `origin` given `height` and `width`.
 ///
 /// Arguments: 
-/// - stage: &mut [Stage] - stage to draw onto. 
+/// - stage: &mut [`Stage`] - stage to draw onto. 
 /// - origin: ([f32], [f32]) - coord for origin/center of rectangle. 
 /// - height: [f32] - height of rectangle. 
 /// - width: [f32] - width of rectangle. 
-/// - style [Style] - struct containing styling args. 
+/// - style [`Style`] - struct containing styling args. 
 pub fn rectangle(
     stage: &mut Stage,
     origin: (f32, f32),
@@ -49,7 +49,8 @@ pub fn rectangle(
 
     // fill interior
     if let Some(fill_color) = style.fill {
-        let rgba = fill_color.rgba();
+        let color = fill_color.rgba();
+
         let x0 = l + 1;
         let x1 = r - 1;
 
@@ -58,13 +59,14 @@ pub fn rectangle(
 
         if x0 <= x1 && y0 <= y1 {
             for y in y0..=y1 {
-                stage.fill_span(y, x0, x1, rgba); 
+                stage.fill_span(y, x0, x1, color); 
             }
         }
     }
 
     // draw stroke 
-    if let Some(stroke_color) = style.stroke { 
+    if let Some(stroke) = style.stroke { 
+        let stroke_color = stroke.rgba();
         line_px(stage, (l, t0), (r, t0), stroke_color);
         line_px(stage, (l, b0), (r, b0), stroke_color);
         line_px(stage, (l, t0), (l, b0), stroke_color);

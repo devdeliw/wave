@@ -1,7 +1,5 @@
-use crate::{Stage, Style, Color};
-use crate::shapes::lines::line_px;
-
-const SQRT_3: f32 = 1.7320508;
+use crate::{Stage, Style, Color}; 
+use crate::primitives::line::draw_line; 
 
 /// Returns sorted vertices by `y`-value.
 fn sort_vertices(
@@ -48,8 +46,6 @@ fn fill_flat_bottom_triangle(
     let mut curx1: i64 = (v1.0 as i64) << 16;
     let mut curx2: i64 = (v1.0 as i64) << 16;
 
-    let rgba = fill_color.rgba();
-
     // include top scanline, exclude bottom scanline.
     for y in v1.1..v2.1 {
         let xa = fp_ceil_to_int(curx1);
@@ -58,7 +54,7 @@ fn fill_flat_bottom_triangle(
         let (x0, mut x1) = sort_span_bounds(xa, xb);
         x1 -= 1;
 
-        stage.fill_span(y, x0, x1, rgba);
+        stage.fill_span(y, x0, x1, fill_color);
 
         curx1 += dxdy1;
         curx2 += dxdy2;
@@ -82,8 +78,6 @@ fn fill_flat_top_triangle(
     let mut curx1: i64 = (v1.0 as i64) << 16;
     let mut curx2: i64 = (v2.0 as i64) << 16;
 
-    let rgba = fill_color.rgba();
-
     // include top scanline, exclude bottom scanline.
     for y in v1.1..v3.1 {
         let xa = fp_ceil_to_int(curx1);
@@ -92,7 +86,7 @@ fn fill_flat_top_triangle(
         let (x0, mut x1) = sort_span_bounds(xa, xb);
         x1 -= 1;
 
-        stage.fill_span(y, x0, x1, rgba);
+        stage.fill_span(y, x0, x1, fill_color);
 
         curx1 += dxdy1;
         curx2 += dxdy2;
@@ -131,67 +125,35 @@ fn fill_triangle(
     }
 }
 
-/// Draws a triangle in cartesian coords using three coords. For equilateral triangles, use
-/// [equilateral_triangle].
+/// Draws a triangle in pixel coords using three pixel coords. 
 ///
 /// Arguments:
-/// - stage: &mut [Stage] - stage to draw onto.
-/// - xy1: ([f32], [f32]) - first coord.
-/// - xy2: ([f32], [f32]) - second coord.
-/// - xy3: ([f32], [f32]) - third coord.
-/// - style: [Style] - struct containing styling args.
-pub fn triangle(
+/// - stage: &mut [`Stage`] - stage to draw onto.
+/// - xy1: ([isize], [isize]) - first coord.
+/// - xy2: ([isize], [isize]) - second coord.
+/// - xy3: ([isize], [isize]) - third coord.
+/// - style: [`Style`] - struct containing styling args.
+pub(crate) fn draw_triangle(
     stage: &mut Stage,
-    xy1: (f32, f32),
-    xy2: (f32, f32),
-    xy3: (f32, f32),
+    xy1: (isize, isize),
+    xy2: (isize, isize),
+    xy3: (isize, isize),
     style: Style,
 ) {
     if !style.fill_or_stroke_exists() {
         return;
     }
 
-    let Some(xy1_px) = stage.world_to_pixel(xy1) else { return; };
-    let Some(xy2_px) = stage.world_to_pixel(xy2) else { return; };
-    let Some(xy3_px) = stage.world_to_pixel(xy3) else { return; };
-
-    if let Some(fill_color) = style.fill {
-        fill_triangle(stage, xy1_px, xy2_px, xy3_px, fill_color);
+    if let Some(fill) = style.fill {
+        let fill_color = fill.rgba(); 
+        fill_triangle(stage, xy1, xy2, xy3, fill_color);
     }
 
-    if let Some(stroke_color) = style.stroke {
-        line_px(stage, xy1_px, xy2_px, stroke_color);
-        line_px(stage, xy2_px, xy3_px, stroke_color);
-        line_px(stage, xy3_px, xy1_px, stroke_color);
+    if let Some(stroke) = style.stroke {
+        let stroke_color = stroke.rgba(); 
+        draw_line(stage, xy1, xy2, stroke_color);
+        draw_line(stage, xy2, xy3, stroke_color);
+        draw_line(stage, xy3, xy1, stroke_color);
     }
-}
-
-/// Draws an equilateral triangle in cartesian coords centered about `origin` of given
-/// `side_length`. For arbitrary triangles, use [triangle].
-///
-/// Arguments:
-/// - stage: &mut [Stage] - stage to draw onto.
-/// - origin: ([f32], [f32]) - center coord of equilateral triangle.
-/// - side_length: [f32] - side length of equilateral triangle.
-/// - style: [Style] - struct containing styling args.
-pub fn equilateral_triangle(
-    stage: &mut Stage,
-    origin: (f32, f32),
-    side_length: f32,
-    style: Style,
-) {
-    if !side_length.is_finite() || side_length <= 0.0 {
-        return;
-    }
-
-    let (xc, yc) = origin;
-    let apex_dy = (SQRT_3 / 3.0) * side_length;
-    let base_dy = (SQRT_3 / 6.0) * side_length;
-
-    let xy1 = (xc, yc + apex_dy);
-    let xy2 = (xc - side_length * 0.5, yc - base_dy);
-    let xy3 = (xc + side_length * 0.5, yc - base_dy);
-
-    triangle(stage, xy1, xy2, xy3, style);
 }
 

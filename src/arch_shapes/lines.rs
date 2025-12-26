@@ -3,10 +3,10 @@ use crate::{Stage, Style, Color};
 /// Draws a line in cartesian coords from `xy1` to `xy2`.
 ///
 /// Arguments: 
-/// - stage: &mut [Stage] - stage to draw onto. 
+/// - stage: &mut [`Stage`] - stage to draw onto. 
 /// - xy1: ([f32], [f32]) - coord for first point. 
 /// - xy2: ([f32], [f32]) - coord for second point. 
-/// - color: [Color] - struct containing rgba `[u8; 4]` color. 
+/// - color: [`Color`] - struct containing rgba `[u8; 4]` color. 
 pub fn line(
     stage: &mut Stage, 
     xy1: (f32, f32), 
@@ -14,12 +14,52 @@ pub fn line(
     style: Style,
 ) {
     // lines only use stroke. fill ignored. 
-    let Some(color) = style.stroke else { return; }; 
+    let Some(stroke) = style.stroke else { return; }; 
+    let color = stroke.rgba(); 
 
     let Some(xy1_px) = stage.world_to_pixel(xy1) else { return; }; 
     let Some(xy2_px) = stage.world_to_pixel(xy2) else { return; }; 
 
     line_px(stage, xy1_px, xy2_px, color);
+}
+
+/// Draws the width of a line stroke in pixel coords.  
+fn width( 
+    stage: &mut Stage, 
+    xy1: (f32, f32), 
+    xy2: (f32, f32), 
+    width: f32, 
+    color: Color,
+) { 
+    let (x1, y1) = xy1; 
+    let (x2, y2) = xy2; 
+
+    let dx = x2 - x1; 
+    let dy = y2 - y1; 
+    let length = (dx.powi(2) + dy.powi(2)).sqrt();
+
+
+    // unit normals 
+    let nx = -dy / length; 
+    let ny = dx / length; 
+    let r = width / 2.0; 
+
+    // offset vector 
+    let ox = nx * r; 
+    let oy = ny * r; 
+
+    // width bound coordinates 
+    let xy1_1 = ((x1 + ox).round() as isize, (y1 + oy).round() as isize); 
+    let xy2_1 = ((x2 + ox).round() as isize, (y2 + oy).round() as isize); 
+    let xy1_2 = ((x1 - ox).round() as isize, (y1 - oy).round() as isize); 
+    let xy2_2 = ((x2 - ox).round() as isize, (y2 - oy).round() as isize); 
+
+    // first bound line 
+    line_px(stage, xy1_1, xy2_1, color); 
+    
+    // second bound line 
+    line_px(stage, xy1_2, xy2_2, color); 
+
 }
 
 
@@ -47,14 +87,12 @@ pub(crate) fn line_px(
     let sx = (x2 - x1).signum(); 
     let sy = (y2 - y1).signum();
  
-    let rgba = color.rgba(); 
-
     // Bresenham line algorithm
     if dx >= dy { 
         let mut err = 2 * dy - dx; 
 
         for _ in 0..=dx { 
-            stage.plot(x, y, rgba); 
+            stage.plot(x, y, color); 
 
             if err >= 0 { 
                 y += sy; 
@@ -69,7 +107,7 @@ pub(crate) fn line_px(
         let mut err = 2 * dx - dy; 
 
         for _ in 0..=dy { 
-            stage.plot(x, y, rgba); 
+            stage.plot(x, y, color); 
 
             if err >= 0 { 
                 x += sx; 
@@ -84,7 +122,14 @@ pub(crate) fn line_px(
 
 
 #[inline(always)]
-fn out_code(x: isize, y: isize, xmin: isize, ymin: isize, xmax: isize, ymax: isize) -> u8 {
+fn out_code(
+    x: isize, 
+    y: isize, 
+    xmin: isize, 
+    ymin: isize, 
+    xmax: isize, 
+    ymax: isize
+) -> u8 {
     let mut c = 0u8;
     if x < xmin { c |= 1; }
     else if x > xmax { c |= 2; }
@@ -94,7 +139,7 @@ fn out_code(x: isize, y: isize, xmin: isize, ymin: isize, xmax: isize, ymax: isi
 }
 
 /// Cohen–Sutherland clip in integer space.
-/// Returns None if fully outside; otherwise clipped endpoints.
+/// Returns `None` if fully outside; otherwise clipped endpoints.
 fn clip_line_to_stage(
     stage: &Stage,
     p0: (isize, isize),
@@ -125,23 +170,26 @@ fn clip_line_to_stage(
         let (x0i, y0i, x1i, y1i) = (x0 as i64, y0 as i64, x1 as i64, y1 as i64);
         let dx = x1i - x0i;
         let dy = y1i - y0i;
-
         let (xi, yi): (i64, i64);
 
         if (c_out & 8) != 0 {
-            // y = ymax
+            // y = ymax 
+            if dy == 0 { return None; }
             yi = ymax as i64;
             xi = x0i + dx * (yi - y0i) / dy;
         } else if (c_out & 4) != 0 {
             // y = ymin
+            if dy == 0 { return None; }
             yi = ymin as i64;
             xi = x0i + dx * (yi - y0i) / dy;
         } else if (c_out & 2) != 0 {
             // x = xmax
+            if dx == 0 { return None; }
             xi = xmax as i64;
             yi = y0i + dy * (xi - x0i) / dx;
         } else {
             // x = xmin
+            if dx == 0 { return None; }
             xi = xmin as i64;
             yi = y0i + dy * (xi - x0i) / dx;
         }
@@ -158,3 +206,4 @@ fn clip_line_to_stage(
         }
     }
 }
+

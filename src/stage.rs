@@ -1,7 +1,10 @@
 use crate::Color;
+use std::path::Path; 
+use image::{ColorType, ImageFormat, ImageResult}; 
 
-/// `Stage` struct containing a row major framebuffer 
-/// of length `width * height` containing RGBA `[u8; 4]` 
+
+/// `Stage` struct containing a row major framebuffer
+/// of length `width * height` containing RGBA `[u8; 4]`
 /// array for each pixel.
 pub struct Stage { 
     width: usize, 
@@ -12,15 +15,14 @@ pub struct Stage {
 
 /// Constructor and Getters.
 impl Stage { 
-    /// Constructor. Initializes a `width` x `height` [Stage] 
-    /// that is black and transparent.
+    /// Creates a `width` x `height` [`Stage`] that is black and transparent.
     ///
     /// Arguments: 
     /// - width: [usize]: stage width. 
     /// - height: [usize]: stage height.
     ///
     /// Returns: 
-    /// [Stage] of size `(width, height)`. 
+    /// [`Stage`] of size `(width, height)`. 
     pub fn new(width: usize, height: usize) -> Self {
         assert!(width > 0 && height > 0, "Stage must be strictly positive in size"); 
         let length = width
@@ -34,35 +36,34 @@ impl Stage {
         }
     }
 
-    /// Getter. Returns the width of the [Stage].
+    /// Returns the width of the [`Stage`].
     pub fn width(&self) -> usize { 
         self.width 
     }           
 
-    /// Getter. Returns the height of the [Stage].
+    /// Returns the height of the [`Stage`].
     pub fn height(&self) -> usize { 
         self.height
     }
 
-    /// Getter. Returns the dimensions `(width, height)` 
-    /// of the [Stage].
+    /// Returns the dimensions `(width, height)` of the [`Stage`].
     pub fn dimensions(&self) -> (usize, usize) { 
         (self.width, self.height)
     }
 
-    /// Getter. Returns a reference to the [Stage] framebuffer.
+    /// Returns a reference to the [`Stage`] framebuffer.
     pub fn pixels(&self) -> &[[u8; 4]] { 
        &self.framebuf 
     }
 
-    /// Getter. Returns a mutable reference to the [Stage]
-    /// framebuffer. 
+    /// Returns a mutable reference to the [`Stage`] framebuffer.
     pub fn pixels_mut(&mut self) -> &mut [[u8; 4]] { 
         &mut self.framebuf
     }
 
-    /// Getter. Gets the color value of a pixel at `(x, y)`. 
-    /// Returns `None` if pixel out-of-bounds. Otherwise `Some([u8; 4])`. 
+    /// Gets the color value of a pixel at `(x, y)`.
+    ///
+    /// Returns `None` if out-of-bounds, otherwise `Some([u8; 4])`.
     pub fn get_pixel(&self, x: usize, y: usize) -> Option<[u8; 4]> {
 
         // quick return
@@ -74,7 +75,7 @@ impl Stage {
         Some(self.framebuf[index])
     }
  
-    /// Getter. Returns the number of pixels in the [Stage].
+    /// Returns the number of pixels in the [`Stage`].
     pub fn len(&self) -> usize { 
         self.framebuf.len()
     }
@@ -89,7 +90,7 @@ impl Stage {
 
 /// Setters. 
 impl Stage { 
-    /// Returns linear framebuffer index for the pixel 
+    /// Returns the linear framebuffer index for the pixel
     /// at `(x, y)` where `(0, 0)` is the top-left.
     fn index(&self, x: usize, y: usize) -> usize {
         debug_assert!(x < self.width);
@@ -99,37 +100,39 @@ impl Stage {
     }
 
 
-    /// Setter. Sets the [Stage] background to provided `color`. 
+    /// Sets the [`Stage`] background to the provided `color`. 
     pub fn clear(&mut self, color: Color) { 
         self.framebuf.fill(color.rgba()); 
     } 
 
 
-    /// Setter. Sets the color value of a pixel at `(x, y)`. 
-    /// If pixel is out-of-bounds, silently does nothing.
+    /// Sets the color value of a pixel at `(x, y)`.
+    /// If the pixel is out-of-bounds, silently does nothing.
     #[inline(always)]
-    pub fn set_pixel(&mut self, x: usize, y: usize, color: [u8; 4]) {
+    pub fn set_pixel(&mut self, x: usize, y: usize, color: Color) {
 
         // silent quick return 
         if x >= self.width || y >= self.height {
             return;
         }
 
+        let color = color.rgba(); 
         let index = self.index(x, y);
         self.framebuf[index] = color;
     }
 
 
-    /// Setter. Sets the color value of a signed pixel at `(x, y)`.
+    /// Sets the color value of a signed pixel at `(x, y)`.
     /// If the pixel is out-of-bounds, silently does nothing.
     ///
     /// Hot path in drawing shapes.
     #[inline(always)]
-    pub fn plot(&mut self, x: isize, y: isize, color: [u8; 4]) {
+    pub fn plot(&mut self, x: isize, y: isize, color: Color) {
         if x < 0 || y < 0 { 
             return; 
         } 
 
+        let color = color.rgba(); 
         let (xu, yu) = (x as usize, y as usize);
         if xu < self.width && yu < self.height { 
             let idx = yu * self.width + xu;
@@ -138,9 +141,9 @@ impl Stage {
     }
 }
 
-/// Helpers 
+/// Helpers. 
 impl Stage { 
-    /// Returns the framebuffer as contiguous `&[u8]` slice of RGBA bytes 
+    /// Returns the framebuffer as a contiguous `&[u8]` slice of RGBA bytes
     /// in row major order suitable for rendering.
     pub fn as_bytes(&self) -> &[u8] {
         // SAFETY: 
@@ -154,7 +157,7 @@ impl Stage {
         }
     }
 
-    /// Converts world/cartesian coordinates (origin at center) into 
+    /// Converts world/cartesian coordinates (origin at center) into
     /// pixel coordinates (origin top-left).
     ///
     /// Returns 
@@ -177,9 +180,9 @@ impl Stage {
         Some((px as isize, py as isize))
     }
 
-    /// Fills given contiguous pixels at row `y` from `x0` to `x1` inclusive with given `color`. 
-    /// `y`, `x0`, `x1` in pixel coords. 
-    pub(crate) fn fill_span(&mut self, y: isize, x0: isize, x1: isize, color: [u8; 4]) {
+    /// Fills contiguous pixels at row `y` from `x0` to `x1` inclusive with `color`.
+    /// `y`, `x0`, `x1` are in pixel coords. 
+    pub(crate) fn fill_span(&mut self, y: isize, x0: isize, x1: isize, color: Color) {
         if y < 0 { return; } 
         let y = y as usize; 
         if y >= self.height { return; } 
@@ -195,6 +198,26 @@ impl Stage {
         if a > b { return; }
 
         let row = y * self.width; 
+        let color = color.rgba(); 
         self.framebuf[row + a as usize .. row + b as usize + 1].fill(color); 
     }
+
+
+    /// Saves a [`Stage`] as a `png`. 
+    pub fn save_png<P: AsRef<Path>>(&self, path: P) -> ImageResult<()> { 
+        let (w, h) = self.dimensions(); 
+
+        let bytes = self.as_bytes(); 
+        assert_eq!(bytes.len(), w * h * 4); 
+
+        image::save_buffer_with_format( 
+            path, 
+            bytes, 
+            w as u32, 
+            h as u32, 
+            ColorType::Rgba8, 
+            ImageFormat::Png, 
+        )
+    }
 }
+

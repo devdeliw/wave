@@ -1,13 +1,5 @@
-mod lines; 
-pub use lines::line; 
+pub mod polygons; 
+pub use polygons::{line, triangle, rectangle, equilateral_triangle, square}; 
 
-mod circles; 
+pub mod circles; 
 pub use circles::circle; 
-
-mod triangles; 
-pub use triangles::triangle; 
-pub use triangles::equilateral_triangle;
-
-mod rectangles; 
-pub use rectangles::rectangle; 
-pub use rectangles::square; 
