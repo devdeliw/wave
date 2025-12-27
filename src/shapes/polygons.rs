@@ -2,7 +2,7 @@ use crate::{Stage, Style, Path};
 
 const SQRT3: f32 = 1.7320508;
 
-/// Draws a line in cartesian coords from `xy1` to `xy2`. 
+/// Draws a line in world coords from `xy1` to `xy2`. 
 ///
 /// Arguments: 
 /// - stage: &mut [`Stage`] - stage to draw onto. 
@@ -21,7 +21,7 @@ pub fn line(
     line_path.render(stage, style); 
 }
 
-/// Draws a triangle using three cartesian coords. 
+/// Draws a triangle using three world coords. 
 ///
 /// Arguments: 
 /// - stage: &mut [Stage] - stage to draw onto. 
@@ -42,7 +42,7 @@ pub fn triangle(
     triangle_path.render(stage, style); 
 }
 
-/// Draws a rectangle centered on `origin` of given `width` and `height` in cartesian coords.
+/// Draws a rectangle centered on `origin` of given `width` and `height` in world coords.
 ///
 /// Arguments: 
 /// - stage: &mut [Stage] - stage to draw onto. 
@@ -62,7 +62,9 @@ pub fn rectangle(
     } 
 
     // pixel coords
-    let (stage_width, stage_height) = stage.dimensions(); 
+    let (stage_width, stage_height) = stage.dimensions();
+
+    // clamp to stage 
     let stage_width = stage_width as f32; 
     let stage_height = stage_height as f32; 
     let min_x = -stage_width / 2.0; 
@@ -84,7 +86,7 @@ pub fn rectangle(
     let tr = (r, t); 
     let br = (r, b); 
 
-    let nodes = Vec::from([tl, bl, br, tr]); 
+    let nodes = Vec::from([tl, tr, br, bl]); 
     let rectangle_path = Path::new(nodes, true);
     rectangle_path.render(stage, style); 
 } 

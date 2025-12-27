@@ -7,7 +7,7 @@ use crate::{Stage, Color};
 /// - xy1_px: ([isize], [isize])
 /// - xy2_px: ([isize], [isize])
 /// - color: [Color] 
-pub(crate) fn draw_line( 
+pub(crate) fn draw_line_pxl( 
     stage: &mut Stage, 
     xy1_px: (isize, isize), 
     xy2_px: (isize, isize), 
@@ -35,7 +35,7 @@ pub(crate) fn draw_line(
         let mut err = 2 * dy - dx; 
 
         for _ in 0..=dx { 
-            stage.plot(x, y, color); 
+            stage.plot_pxl(x, y, color); 
 
             if err >= 0 { 
                 y += sy; 
@@ -49,7 +49,7 @@ pub(crate) fn draw_line(
         let mut err = 2 * dx - dy; 
 
         for _ in 0..=dy { 
-            stage.plot(x, y, color); 
+            stage.plot_pxl(x, y, color); 
 
             if err >= 0 { 
                 x += sx; 

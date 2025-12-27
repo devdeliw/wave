@@ -4,14 +4,14 @@
 
 use crate::{Color, Stage, Style};
 use crate::primitives::{
-    line::draw_line,
-    triangle::draw_triangle, 
+    line::draw_line_pxl,
+    triangle::draw_triangle_pxl, 
 }; 
 
 /// A general Path object.
 ///
 /// Arguments:
-/// - nodes: Vec<([f32], [f32])> - ordered collection of cartesian coords.
+/// - nodes: Vec<([f32], [f32])> - ordered collection of world coords.
 /// - closed: [bool] - whether to connect the last point with the first.
 pub struct Path {
     nodes:  Vec<(f32, f32)>,
@@ -22,7 +22,7 @@ impl Path {
     /// Generates a [Path] from provided coordinates and closed [bool].
     ///
     /// Arguments:
-    /// - nodes: Vec<([f32], [f32])> - ordered collection of cartesian coords.
+    /// - nodes: Vec<([f32], [f32])> - ordered collection of world coords.
     /// - closed: [bool] - whether to connect the last point with the first.
     pub fn new(nodes: Vec<(f32, f32)>, closed: bool) -> Self {
         Self { nodes, closed }
@@ -31,15 +31,15 @@ impl Path {
     /// Converts `nodes` from cartesian `Vec<(f32, f32)>` to pixel `Option<Vec<(isize, isize)>>`.
     ///
     /// If any cartesian node is unrepresentable, bails and returns `None`.
-    pub(crate) fn to_pixels(&self, stage: &mut Stage) -> Option<Vec<(isize, isize)>> {
+    pub(crate) fn to_pxls(&self, stage: &Stage) -> Option<Vec<(isize, isize)>> {
         let mut out: Vec<(isize, isize)> = Vec::with_capacity(self.nodes.len());
         for &xy in &self.nodes {
-            out.push(stage.world_to_pixel(xy)?);
+            out.push(stage.world_to_pxl(xy)?);
         }
         Some(out)
     } 
 
-    pub(crate) fn make_stroke(
+    pub(crate) fn make_stroke_pxl(
         nodes_px: &[(isize, isize)],
         closed: bool,
         width: f32,
@@ -53,25 +53,25 @@ impl Path {
         if width <= 1.0 {
             let mut i = 0;
             while i + 1 < nodes_px.len() {
-                draw_line(stage, nodes_px[i], nodes_px[i + 1], stroke_color);
+                draw_line_pxl(stage, nodes_px[i], nodes_px[i + 1], stroke_color);
                 i += 1;
             }
             if closed {
-                draw_line(stage, nodes_px[nodes_px.len() - 1], nodes_px[0], stroke_color);
+                draw_line_pxl(stage, nodes_px[nodes_px.len() - 1], nodes_px[0], stroke_color);
             }
             return;
         }
 
         // thick stroke 
-        let style = Style::make_fill(stroke_color);
+        let style = Style::fill_only(stroke_color);
         let mut i = 0;
         while i + 1 < nodes_px.len() {
             let xy1 = nodes_px[i];
             let xy2 = nodes_px[i + 1];
 
             if let Some([a, b, c, d]) = stroke_corners(xy1, xy2, width) {
-                draw_triangle(stage, a, b, c, style);
-                draw_triangle(stage, a, c, d, style);
+                draw_triangle_pxl(stage, a, b, c, style);
+                draw_triangle_pxl(stage, a, c, d, style);
             }
 
             i += 1;
@@ -82,14 +82,14 @@ impl Path {
             let xy2 = nodes_px[0];
 
             if let Some([a, b, c, d]) = stroke_corners(xy1, xy2, width) {
-                draw_triangle(stage, a, b, c, style);
-                draw_triangle(stage, a, c, d, style);
+                draw_triangle_pxl(stage, a, b, c, style);
+                draw_triangle_pxl(stage, a, c, d, style);
             }
         }
     }
 
     /// Fills the interior of `self` in pixel coords.
-    pub(crate) fn make_fill(
+    pub(crate) fn make_fill_pxl(
         nodes_px: &[(isize, isize)],
         stage: &mut Stage,
         fill_color: Color,
@@ -168,7 +168,7 @@ impl Path {
                 let r = x2 - 1;
 
                 if l <= r {
-                    stage.fill_span(y, l, r, fill_color);
+                    stage.fill_span_pxl(y, l, r, fill_color);
                 }
 
                 j += 2;
@@ -176,25 +176,25 @@ impl Path {
         }
     }
 
-    /// Renders `self` on a `stage` using `style`.
+    /// Renders `self` on a `stage` using `style`. Filling only occurs if `self` is closed. 
     ///
     /// Arguments: 
     /// - stage: &mut [Stage] - stage to draw onto. 
-    /// - style: [Style] - struct containing style args. 
+    /// - style: [Style] - struct containing style args.
     pub fn render(&self, stage: &mut Stage, style: Style) {
-        let Some(nodes_px) = self.to_pixels(stage) else { return; };
+        let Some(nodes_px) = self.to_pxls(stage) else { return; };
         if !style.fill_or_stroke_exists() { return; };
 
         if self.closed {
             if let Some(fill) = style.fill {
                 let fill_color = fill.rgba();
-                Self::make_fill(&nodes_px, stage, fill_color);
+                Self::make_fill_pxl(&nodes_px, stage, fill_color);
             }
         }
 
         if let Some(stroke) = style.stroke {
             let stroke_color = stroke.rgba();
-            Self::make_stroke(
+            Self::make_stroke_pxl(
                 &nodes_px,
                 self.closed,
                 stroke.width,
@@ -218,8 +218,7 @@ fn y_bound(nodes_px: &[(isize, isize)]) -> (isize, isize) {
 }
 
 /// Returns the corners of a line with a stroke `width`.
-///
-/// Order: `[p1+o, p2+o, p2-o, p1-o]`.
+/// Projected ends to account for corners. 
 fn stroke_corners(
     xy1: (isize, isize),
     xy2: (isize, isize),
@@ -242,17 +241,28 @@ fn stroke_corners(
 
     let inv_len = len2.sqrt().recip();
 
-    let nx = -dy * inv_len;
-    let ny =  dx * inv_len;
+    // unit tangent
+    let tx = dx * inv_len;
+    let ty = dy * inv_len;
 
-    let r  = width * 0.5;
+    // unit normal
+    let nx = -ty;
+    let ny =  tx;
+
+    let r = width * 0.5;
+
+    // extend endpoints 
+    // to ensure overlap
+    let ex = tx * r;
+    let ey = ty * r;
+
     let ox = nx * r;
     let oy = ny * r;
 
-    let a = ((x1 + ox).round() as isize, (y1 + oy).round() as isize);
-    let b = ((x2 + ox).round() as isize, (y2 + oy).round() as isize);
-    let c = ((x2 - ox).round() as isize, (y2 - oy).round() as isize);
-    let d = ((x1 - ox).round() as isize, (y1 - oy).round() as isize);
+    let a = ((x1 - ex + ox).round() as isize, (y1 - ey + oy).round() as isize);
+    let b = ((x2 + ex + ox).round() as isize, (y2 + ey + oy).round() as isize);
+    let c = ((x2 + ex - ox).round() as isize, (y2 + ey - oy).round() as isize);
+    let d = ((x1 - ex - ox).round() as isize, (y1 - ey - oy).round() as isize);
 
     Some([a, b, c, d])
 }

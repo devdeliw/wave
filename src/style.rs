@@ -36,10 +36,10 @@ impl Color {
     /// this intrinsic alpha to produce an effective alpha at draw time.
     ///
     /// Arguments:
-    /// - opacity: [`Opacity`]
-    pub fn with_alpha(self, opacity: Opacity) -> Self {
+    /// - alpha: [u8]
+    pub fn with_alpha(self, alpha: u8) -> Self {
         let mut rgba = self.0;
-        rgba[3] = opacity.as_u8();
+        rgba[3] = alpha;
         Self(rgba)
     }
 }
@@ -92,7 +92,7 @@ impl Style {
     ///
     /// Arguments:
     /// - stroke_color: [`Color`]
-    pub const fn make_stroke(stroke_color: Color) -> Self {
+    pub const fn stroke_only(stroke_color: Color) -> Self {
         Self {
             fill: None,
             stroke: Some(Stroke::new(stroke_color, Opacity::OPAQUE, 1.0))
@@ -103,7 +103,7 @@ impl Style {
     ///
     /// Arguments:
     /// - fill_color: [`Color`]
-    pub const fn make_fill(fill_color: Color) -> Self {
+    pub const fn fill_only(fill_color: Color) -> Self {
         Self {
             fill: Some(Fill::new(fill_color, Opacity::OPAQUE)),
             stroke: None

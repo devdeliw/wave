@@ -1,5 +1,5 @@
 use crate::{Stage, Style, Color}; 
-use crate::primitives::line::draw_line; 
+use crate::primitives::line::draw_line_pxl; 
 
 /// Returns sorted vertices by `y`-value.
 fn sort_vertices(
@@ -54,7 +54,7 @@ fn fill_flat_bottom_triangle(
         let (x0, mut x1) = sort_span_bounds(xa, xb);
         x1 -= 1;
 
-        stage.fill_span(y, x0, x1, fill_color);
+        stage.fill_span_pxl(y, x0, x1, fill_color);
 
         curx1 += dxdy1;
         curx2 += dxdy2;
@@ -86,7 +86,7 @@ fn fill_flat_top_triangle(
         let (x0, mut x1) = sort_span_bounds(xa, xb);
         x1 -= 1;
 
-        stage.fill_span(y, x0, x1, fill_color);
+        stage.fill_span_pxl(y, x0, x1, fill_color);
 
         curx1 += dxdy1;
         curx2 += dxdy2;
@@ -133,7 +133,7 @@ fn fill_triangle(
 /// - xy2: ([isize], [isize]) - second coord.
 /// - xy3: ([isize], [isize]) - third coord.
 /// - style: [`Style`] - struct containing styling args.
-pub(crate) fn draw_triangle(
+pub(crate) fn draw_triangle_pxl(
     stage: &mut Stage,
     xy1: (isize, isize),
     xy2: (isize, isize),
@@ -151,9 +151,9 @@ pub(crate) fn draw_triangle(
 
     if let Some(stroke) = style.stroke {
         let stroke_color = stroke.rgba(); 
-        draw_line(stage, xy1, xy2, stroke_color);
-        draw_line(stage, xy2, xy3, stroke_color);
-        draw_line(stage, xy3, xy1, stroke_color);
+        draw_line_pxl(stage, xy1, xy2, stroke_color);
+        draw_line_pxl(stage, xy2, xy3, stroke_color);
+        draw_line_pxl(stage, xy3, xy1, stroke_color);
     }
 }
 

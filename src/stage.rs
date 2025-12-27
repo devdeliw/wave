@@ -106,28 +106,12 @@ impl Stage {
     } 
 
 
-    /// Sets the color value of a pixel at `(x, y)`.
-    /// If the pixel is out-of-bounds, silently does nothing.
-    #[inline(always)]
-    pub fn set_pixel(&mut self, x: usize, y: usize, color: Color) {
-
-        // silent quick return 
-        if x >= self.width || y >= self.height {
-            return;
-        }
-
-        let color = color.rgba(); 
-        let index = self.index(x, y);
-        self.framebuf[index] = color;
-    }
-
-
     /// Sets the color value of a signed pixel at `(x, y)`.
     /// If the pixel is out-of-bounds, silently does nothing.
     ///
     /// Hot path in drawing shapes.
     #[inline(always)]
-    pub fn plot(&mut self, x: isize, y: isize, color: Color) {
+    pub fn plot_pxl(&mut self, x: isize, y: isize, color: Color) {
         if x < 0 || y < 0 { 
             return; 
         } 
@@ -157,13 +141,14 @@ impl Stage {
         }
     }
 
-    /// Converts world/cartesian coordinates (origin at center) into
-    /// pixel coordinates (origin top-left).
+    /// Converts world coordinates into pixel coordinates (origin top-left).
+    ///
+    /// So far the world is fixed cartesian, no camera freedom. 
     ///
     /// Returns 
     /// - `Some(isize, isize)`: if pixel coordinate is finite and representable
     /// - `None`: otherwise
-    pub(crate) fn world_to_pixel(&self, (x, y): (f32, f32)) -> Option<(isize, isize)> {
+    pub(crate) fn world_to_pxl(&self, (x, y): (f32, f32)) -> Option<(isize, isize)> {
         if !x.is_finite() || !y.is_finite() { 
             return None; 
         } 
@@ -182,7 +167,7 @@ impl Stage {
 
     /// Fills contiguous pixels at row `y` from `x0` to `x1` inclusive with `color`.
     /// `y`, `x0`, `x1` are in pixel coords. 
-    pub(crate) fn fill_span(&mut self, y: isize, x0: isize, x1: isize, color: Color) {
+    pub(crate) fn fill_span_pxl(&mut self, y: isize, x0: isize, x1: isize, color: Color) {
         if y < 0 { return; } 
         let y = y as usize; 
         if y >= self.height { return; } 
